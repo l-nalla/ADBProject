@@ -7,6 +7,10 @@ class AdminModel:
         self.db = MongoDBConnection().connect()
 
     # create objects in mongo db collections
+    def create_admin_account(self, data):
+        self.db.admin.insert_one(data)
+        return jsonify({"message": "Admin account created successfully!"})
+
     def create_instructor(self, data):
         self.db.instructors.insert_one(data)
         return jsonify({"message": "Instructor created successfully!"})
@@ -53,3 +57,7 @@ class AdminModel:
     def update_record(self, collection, record_id, updated_data):
         self.db[collection].update_one({"_id": record_id}, {"$set": updated_data})
         return jsonify({"message": "Record updated successfully!"})
+    
+    def find_by_email(self, collection, email):
+        record = self.db[collection].find_one({"email": email})
+        return record
