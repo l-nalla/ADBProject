@@ -1,39 +1,88 @@
 from bson import ObjectId
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from model.admin import AdminModel
+from utils.generate_session_cookie import generate_session_cookie
 import os
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # For session management
-
+app.config['SESSION_COOKIE_NAME'] = generate_session_cookie()
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600 
 # initialize the MongoDB connection
 admin_model = AdminModel()
 
 @app.route('/')
+def login_register():
+    if 'username' in session:
+        return redirect(url_for('admin_dashboard'))
+    return render_template('login_register.html')
+
+
+
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.form.to_dict()
+    if data['password'] != data['confirm_password']:
+        flash("Passwords do not match!", "danger")
+        return redirect(url_for('login_register'))
+    
+    data.pop('confirm_password')  # Remove confirm_password from data
+    data['password'] = generate_password_hash(data['password'])  # Hash the password
+
+    admin_model.create_admin_account(data)
+    flash("Account created successfully!", "success")
+    return redirect(url_for('login_register'))
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    role = request.form['role']
+    email = request.form['email']
+    password = request.form['password']
+
+    # Fetch user from respective collection
+    user = admin_model.find_by_email(role, email)
+    if not user or not check_password_hash(user['password'], password):
+        flash("Invalid credentials!", "danger")
+        return redirect(url_for('login_register'))
+
+    # Save user to session and redirect
+    session['user'] = str(user['_id'])
+    session['username'] = user['first_name']+ " "+ user['last_name']
+    session['role'] = role
+    flash(f"Welcome, {user['first_name']}!", "success")
+    return redirect(url_for('admin_dashboard') if role == 'admin' else url_for('/login'))
+
+
 @app.route('/admin_dashboard')
 def admin_dashboard():
-    active_tab = request.args.get('active_tab', 'overview')
-    if active_tab == 'student':
-        courses = admin_model.get_courses()
-        course_list = [f"{course['course_id']} - {course['course_title']}" for course in courses]
-        return render_template('admin_dashboard.html', active_tab=active_tab, courses = course_list)
-    elif active_tab == 'section':
-        courses = admin_model.get_courses()
-        course_list = [f"{course['course_id']} - {course['course_title']}" for course in courses]
-        students = admin_model.get_students()
-        student_list = [f"{student['first_name']+" "+ student['last_name']}" for student in students]
-        return render_template('admin_dashboard.html', active_tab=active_tab, courses = course_list, students = student_list)
-    elif active_tab == 'instructor':
-        sections = admin_model.get_sections()
-        section_list = [f"{section['section_id']}" for section in sections]
-        return render_template('admin_dashboard.html', active_tab=active_tab, sections = section_list)
-    
-    courses = list(admin_model.get_courses())
-    students = list(admin_model.get_students())
-    sections = list(admin_model.get_sections())
-    instructors = list(admin_model.get_instructors())
-    return render_template('admin_dashboard.html', active_tab=active_tab, courses = courses, students = students, sections = sections, instructors = instructors)
+    if session.get('role') != 'admin':
+        flash("Unauthorized access!", "danger")
+        return redirect(url_for('login_register'))
+    else:
+        print(session.get('user'))
+        active_tab = request.args.get('active_tab', 'overview')
+        if active_tab == 'student':
+            courses = admin_model.get_courses()
+            course_list = [f"{course['course_id']} - {course['course_title']}" for course in courses]
+            return render_template('admin_dashboard.html', active_tab=active_tab, courses = course_list)
+        elif active_tab == 'section':
+            courses = admin_model.get_courses()
+            course_list = [f"{course['course_id']} - {course['course_title']}" for course in courses]
+            students = admin_model.get_students()
+            student_list = [f"{student['first_name']+" "+ student['last_name']}" for student in students]
+            return render_template('admin_dashboard.html', active_tab=active_tab, courses = course_list, students = student_list)
+        elif active_tab == 'instructor':
+            sections = admin_model.get_sections()
+            section_list = [f"{section['section_id']}" for section in sections]
+            return render_template('admin_dashboard.html', active_tab=active_tab, sections = section_list)
+        
+        courses = list(admin_model.get_courses())
+        students = list(admin_model.get_students())
+        sections = list(admin_model.get_sections())
+        instructors = list(admin_model.get_instructors())
+        return render_template('admin_dashboard.html', active_tab=active_tab, courses = courses, students = students, sections = sections, instructors = instructors)
 
 @app.route('/create_instructor', methods=['POST'])
 def create_instructor():
@@ -131,15 +180,19 @@ def edit_record(collection, record_id):
 
 
 
-
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    session.pop('username', None)
+    session.pop('role', None)
+    flash("You have been logged out successfully!", "success")
+    return redirect(url_for('login_register'))
 
 @app.route('/delete-record/<collection>/<record_id>', methods=['POST'])
 def delete_record(collection, record_id):
     admin_model.delete_record(collection, ObjectId(record_id))
     flash(f"Record deleted successfully from {collection}.", "success")
     return admin_dashboard()
-
-
 
 
 if __name__ == '__main__':
