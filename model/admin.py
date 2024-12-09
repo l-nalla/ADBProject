@@ -1,5 +1,6 @@
 from utils.dbconnection import MongoDBConnection
 from flask import Flask, request, jsonify
+from model.mongo_queries import instructor_aggregations
 
 
 class AdminModel:
@@ -29,7 +30,7 @@ class AdminModel:
     
     # get objects from mongo db collections
     def get_instructors(self):
-        instructors = self.db.instructors.find()
+        instructors = self.db['instructors'].aggregate(instructor_aggregations.instructor_pipeline)
         return instructors
     
     def get_students(self):
@@ -37,7 +38,30 @@ class AdminModel:
         return students
     
     def get_sections(self):
-        sections = self.db.sections.find()
+        sections = self.db['sections'].aggregate([
+            {"$unwind": "$students"},
+            {
+                "$addFields": { "students": {"$toObjectId": "$students"} }
+            },
+            {
+                "$lookup": {
+                    "from": "students",
+                    "localField": "students",
+                    "foreignField": "_id",
+                    "as": "studentDetails"
+                }
+            },
+            {
+                "$project": {
+                    "_id": 1,
+                    "section_id": 1,
+                    "enrollment_start_date":1,
+                    "enrollment_end_date":1,
+                    "semester_year": 1,
+                    "list_of_students": "$studentDetails.first_name" 
+                }
+            }
+        ])
         return sections
     
     def get_courses(self):
@@ -54,6 +78,10 @@ class AdminModel:
         record = self.db[collection].find_one({"_id": record_id})
         return record
     
+    def get_section_id(self, section_id):
+        section = self.db.sections.find_one({"section_id": section_id})
+        return section
+
     def update_record(self, collection, record_id, updated_data):
         self.db[collection].update_one({"_id": record_id}, {"$set": updated_data})
         return jsonify({"message": "Record updated successfully!"})

@@ -9,7 +9,7 @@
         <h3>Edit Record in {{ collection | capitalize }}</h3>
         <form method="POST">
             {% for key, value in record.items() %}
-                {% if key != '_id' and key !='password' %}
+                {% if key != '_id' and key !='password'  and key != 'enrolled_courses' and key != 'sections' and  key != 'students' %}
                 <div class="mb-3">
                     <label for="{{ key }}" class="form-label">{{ key | capitalize }}</label>
                     <input type="text" class="form-control" id="{{ key }}" name="{{ key }}" value="{{ value }}">
