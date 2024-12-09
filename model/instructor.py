@@ -37,5 +37,5 @@ class InstructorModel:
         return result
     
     def grade_assignment(self, assignment_id, studnet_id, grade):
-        result = self.db.student.update_one({"_id": ObjectId(studnet_id)}, {"$set": {"gpa": grade}})
+        result = self.db.students.update_one({"_id": ObjectId(studnet_id)}, {"$set": {"gpa": grade}})
         return result
