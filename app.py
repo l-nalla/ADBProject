@@ -131,7 +131,8 @@ def create_instructor():
             "email": request.form['email'],
             "phone_number": request.form['phone_number'],
             "password": hashed_password,
-            "sections": request.form.getlist('list_of_sections')
+            "password_changed": 0 # Set password_changed to 0 at registration
+
         }
         admin_model.create_instructor(data)
         flash("Instructor created successfully!", "success")
@@ -155,7 +156,7 @@ def create_student():
             "email": request.form['email'],
             "phone_number": request.form['phone_number'],
             "password": hashed_password,
-            "enrolled_courses": request.form.getlist('enrolled_courses')
+            "password_changed": 0,  # Set password_changed to 0 at registration
         }
         admin_model.create_student(data)
         flash("Student created successfully!", "success")
