@@ -30,7 +30,7 @@ class AdminModel:
     
     # get objects from mongo db collections
     def get_instructors(self):
-        instructors = self.db['instructors'].aggregate(instructor_aggregations.instructor_pipeline)
+        instructors = self.db.instructors.find()
         return instructors
     
     def get_students(self):
@@ -38,30 +38,7 @@ class AdminModel:
         return students
     
     def get_sections(self):
-        sections = self.db['sections'].aggregate([
-            {"$unwind": "$students"},
-            {
-                "$addFields": { "students": {"$toObjectId": "$students"} }
-            },
-            {
-                "$lookup": {
-                    "from": "students",
-                    "localField": "students",
-                    "foreignField": "_id",
-                    "as": "studentDetails"
-                }
-            },
-            {
-                "$project": {
-                    "_id": 1,
-                    "section_id": 1,
-                    "enrollment_start_date":1,
-                    "enrollment_end_date":1,
-                    "semester_year": 1,
-                    "list_of_students": "$studentDetails.first_name" 
-                }
-            }
-        ])
+        sections = self.db.sections.find()
         return sections
     
     def get_courses(self):
