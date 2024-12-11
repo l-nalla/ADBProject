@@ -200,9 +200,10 @@ def create_student():
 def create_course():
     if request.method == 'POST':
         data = {
-            "course_id": "C"+request.form['course_id'],
+            "course_id": request.form['course_id'],
             "course_title": request.form['course_title'],
             "course_description": request.form['course_description'],
+            "credit_hours": request.form['credit_hours'],
         }
         admin_model.create_course(data)
         flash("Course created successfully!", "success")
@@ -219,8 +220,7 @@ def create_section():
             "semester_year": request.form['semester_year'],
             "enrollment_start_date": request.form['course_start_date'],
             "enrollment_end_date": request.form['course_end_date'],
-            "course_id": request.form['course_id'],
-            "students": request.form.getlist('list_of_students')
+            "course_id": request.form['course_id']  
         }
         admin_model.create_section(data)
         flash("Section created successfully!", "success")
