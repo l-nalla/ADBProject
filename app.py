@@ -80,18 +80,50 @@ def login():
     session['user'] = str(user['_id'])
     session['username'] = user['first_name']+ " "+ user['last_name']
     session['role'] = role
-    if role == 'students':
-        session['enrolled_courses'] = user['enrolled_courses']
+    enrolled_courses = user.get('enrolled_courses')
+    if role == 'students' and enrolled_courses:
+        session['enrolled_courses'] = enrolled_courses
     
     flash(f"Welcome, {user['first_name']}!", "success")
     if role == 'admin':
         return redirect(url_for('admin_dashboard'))
     elif role == 'instructors':
+        if user['password_changed'] == 0:
+            flash("Please change your password!", "warning")
+            return redirect(url_for('change_password'))
         return redirect(url_for('instructor_dashboard'))
+    elif role == 'students':
+        if user['password_changed'] == 0:
+            flash("Please change your password!", "warning")
+            return redirect(url_for('change_password'))
+        return redirect(url_for('student_dashboard'))
     else:
         flash("Invalid role!", "danger")
         return redirect(url_for('login_register'))
     
+
+@app.route('/change_password', methods=['POST', 'GET'])
+def change_password():
+    if request.method == 'POST':
+        old_password = request.form['old_password']
+        if request.form['new_password'] != request.form['confirm_password']:
+            flash("Passwords do not match!", "danger")
+            return redirect(url_for('change_password'))
+        user = admin_model.find_one(session.get('role'), ObjectId(session.get('user')))
+        if not check_password_hash(user['password'], old_password):
+            flash("Invalid old password!", "danger")
+            return redirect(url_for('change_password'))
+        
+        hashed_password = generate_password_hash(request.form['new_password'])
+        data = {
+            "password": hashed_password,
+            "password_changed": 1
+        }
+        admin_model.update_record(session.get('role'), ObjectId(session.get('user')), data)
+        flash("Password changed successfully!", "success")
+        # login with new password
+        return redirect(url_for('login_register'))
+    return render_template('change_password.html')
 
 @app.route('/admin_dashboard')
 def admin_dashboard():
@@ -328,13 +360,14 @@ def student_dashboard():
     else:
         student_id = session.get('user')
         student_data = student_model.get_student(student_id)
-        print(session.get('enrolled_courses')[0])
-        student_assignments = student_model.get_assignments(session.get('enrolled_courses')[0])
-        assignemnts = list(student_assignments)
-        assignemnts =  [assign['assignmentDetail'] for assign in assignemnts][0]
-        course_material = list(student_model.get_course_material(session.get('enrolled_courses')[0]))
-        return render_template('student_dashboard.html', student_data=student_data,course_material=course_material ,assignmemts=assignemnts, username = session.get('username').capitalize())
-
+        if session.get('enrolled_courses') is not None:
+            student_assignments = student_model.get_assignments(session.get('enrolled_courses')[0])
+            assignemnts = list(student_assignments)
+            assignemnts =  [assign['assignmentDetail'] for assign in assignemnts][0]
+            course_material = list(student_model.get_course_material(session.get('enrolled_courses')[0]))
+            return render_template('student_dashboard.html', student_data=student_data,course_material=course_material ,assignmemts=assignemnts, username = session.get('username').capitalize())
+        else:
+            return render_template('student_dashboard.html', student_data=student_data, username = session.get('username').capitalize())
 
 ALLOWED_EXTENSIONS = {"pdf", "docx", "txt", "jpg", "png"}
 
@@ -405,4 +438,4 @@ def delete_record(collection, record_id):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
