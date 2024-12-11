@@ -31,6 +31,30 @@ instructor_pipeline = [
     }
 ]
 
+def register_course_pipeline():
+    return [
+    {
+        "$lookup":{
+            "from": "courses",
+            "localField": "course_id",
+            "foreignField": "course_id",
+            "as": "courseDetails"
+        }
+    },
+    {
+        "$unwind": "$courseDetails"
+    },
+    {
+        "$project": {
+            "_id": { "$toString" : "$_id"},
+            "section_id":  1,
+            "semester_year": 1,
+            "course_id": 1,
+            "course_uid": { "$toString" :"$courseDetails._id"},
+        }
+    }
+]
+
 def instructor_dashboard_pipeline(instructorId):
     return  [
     {

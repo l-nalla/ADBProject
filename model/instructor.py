@@ -1,5 +1,5 @@
 from utils.dbconnection import MongoDBConnection
-from model.mongo_queries.instructor_aggregations import instructor_dashboard_pipeline, get_section_and_courses, get_submitted_assginments
+from model.mongo_queries.instructor_aggregations import *
 from flask import jsonify
 from bson import ObjectId
 
@@ -38,4 +38,17 @@ class InstructorModel:
     
     def grade_assignment(self, assignment_id, studnet_id, grade):
         result = self.db.students.update_one({"_id": ObjectId(studnet_id)}, {"$set": {"gpa": grade}})
+        return result
+    
+
+    def register_course_section(self):
+        result = self.db['sections'].aggregate(register_course_pipeline())
+        return result
+    
+    def course_register_instructor(self, instructor_id, data):
+        result = self.db['instructors'].update_one({"_id": ObjectId(instructor_id)}, {"$set": {"sections": { "section_id" :data.get('section_id'),
+                                                                                                             "courses": data.get('course_id'), 
+                                                                                                             "semesters": data.get('semester_year'), 
+                                                                                                            "course_ids": data.get('course_uid'), "section_ids": data.get('section_uid')
+                                                                                               }}})
         return result

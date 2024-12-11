@@ -23,6 +23,25 @@
     <div class="container mt-5">
         <h2 class="d-flex justify-content-between align-items-center">Instructor Dashboard  <a href="/logout" class="btn btn-sm btn-danger">Logout</a></h2>
         <h3>Welcome! {{ username }} </h3>
+        <br>
+        <div class="container mt-5">
+            <div class="card mt-5">
+                <div class="card-header">
+                    <h5>Register for Courses</h5>
+                </div>
+                <div class="card-body">
+                    <label for="semester-year" class="form-label">Semster Year</label>
+                    <select class="form-select" id="semester-year" name="semester_year" required>
+                        <option value="Fall 2024">Fall 2024</option>
+                        <option value="Spring 2025">Spring 2025</option>
+                        <option value="Summer 2025">Summer 2025</option>
+                        <option value="Fall 2025">Fall 2025</option>
+                    </select>
+                    <div id="courses-container">
+                        <!-- New fields populated here -->
+                    </div>
+                </div>
+            </div>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -156,12 +175,132 @@
     }, 5000); // 5000ms = 5 seconds
     </script>
     <script>
-        $(document).ready(function() {
-            $('#enrolled-courses').select2({
-                placeholder: "Select courses to enroll",
-                allowClear: true
+        document.getElementById('semester-year').addEventListener('change', function () {
+        const selectedSemester = this.value;
+        const courseData = {{ course_data|tojson|safe }};
+        const coursesContainer = document.getElementById('courses-container');
+
+        coursesContainer.innerHTML = ''; // Clear previous data
+
+       if (selectedSemester) {
+        // Filter data for the selected semester
+        const matchedData = courseData.filter(item => item.semester_year === selectedSemester);
+
+        if (matchedData.length > 0) {
+            // Create dropdown for courses
+            const courseDropdown = document.createElement('select');
+            courseDropdown.className = "form-select mb-3";
+            courseDropdown.name = "course_id";
+            courseDropdown.id = "course-dropdown";
+            courseDropdown.innerHTML = '<option value="">Select Course</option>';
+
+            // Populate course dropdown with unique course_id values
+            const uniqueCourses = [...new Set(matchedData.map(item => item.course_id))];
+            uniqueCourses.forEach(courseId => {
+                const option = document.createElement('option');
+                option.value = courseId;
+                option.textContent = courseId;
+                courseDropdown.appendChild(option);
             });
+
+            // Add course dropdown to container
+            coursesContainer.appendChild(courseDropdown);
+
+            // Create container for section dropdown
+            const sectionContainer = document.createElement('div');
+            sectionContainer.id = 'section-container';
+            coursesContainer.appendChild(sectionContainer);
+
+            // Create submit button (initially hidden)
+            const submitButton = document.createElement('button');
+            submitButton.type = 'button'; // Changed to 'button' to prevent form submission before AJAX
+            submitButton.className = 'btn btn-primary mt-3';
+            submitButton.textContent = 'Submit';
+            submitButton.style.display = 'none'; // Hide submit button initially
+            coursesContainer.appendChild(submitButton);
+
+            // Add event listener for course dropdown
+            courseDropdown.addEventListener('change', function () {
+                const selectedCourse = this.value;
+                const sectionContainer = document.getElementById('section-container');
+                sectionContainer.innerHTML = ''; // Clear previous data
+
+                if (selectedCourse) {
+                    // Filter sections based on selected course and semester
+                    const matchedSections = matchedData.filter(item => item.course_id === selectedCourse);
+
+                    if (matchedSections.length > 0) {
+                        // Create section dropdown
+                        const sectionDropdown = document.createElement('select');
+                        sectionDropdown.className = "form-select mb-3";
+                        sectionDropdown.name = "section_id";
+                        sectionDropdown.innerHTML = '<option value="">Select Section</option>';
+
+                        // Populate section dropdown with section_id values
+                        matchedSections.forEach(section => {
+                            const option = document.createElement('option');
+                            option.value = section.section_id;
+                            option.textContent = section.section_id;
+                            sectionDropdown.appendChild(option);
+                        });
+
+                        // Add section dropdown to section container
+                        sectionContainer.appendChild(sectionDropdown);
+
+                        // Show the submit button once course and section are selected
+                        sectionDropdown.addEventListener('change', function () {
+                            // Enable submit button only when all selections are made
+                            if (this.value) {
+                                submitButton.style.display = 'block'; // Show submit button
+                            } else {
+                                submitButton.style.display = 'none'; // Hide submit button if section not selected
+                            }
+                        });
+                    } else {
+                        sectionContainer.innerHTML = '<p>No sections available for the selected course.</p>';
+                    }
+                }
+            });
+
+            // Handle form submission via AJAX (on submit button click)
+            submitButton.addEventListener('click', function () {
+                const selectedCourseId = courseDropdown.value;
+                const selectedSectionId = sectionContainer.querySelector('select').value;
+                const selectedCourse = matchedData.find(item => item.course_id === selectedCourseId && item.section_id === selectedSectionId);
+
+                if (selectedCourse) {
+                    const data = {
+                        _id: selectedCourse._id,
+                        semester_year: selectedSemester,
+                        section_id: selectedSectionId,
+                        course_id: selectedCourse.course_id,
+                        course_uid: selectedCourse.course_uid
+                    };
+
+                    // Send data to Flask using AJAX (fetch)
+                    fetch('/register_course', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data) // Convert data to JSON string
+                    })
+                    .then(responseData => {
+                        // Handle the response from Flask (e.g., display a success message)
+                        alert('Course registration successful!');
+                    })
+                    .catch(error => {
+                        console.error('Error during registration:', error);
+                        alert('Error during course registration. Please try again.');
+                    });
+                }
+            });
+        } else {
+            coursesContainer.innerHTML = '<p>No courses available for the selected semester.</p>';
+        }
+    }
         });
+
     </script>
     <script>
         // Flash message display

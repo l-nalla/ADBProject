@@ -1,5 +1,5 @@
 from bson import ObjectId
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from model.admin import AdminModel
@@ -277,7 +277,19 @@ def instructor_dashboard():
         course_material = instructor_model.get_course_material(instructor_id)
         assignments = instructor_model.get_assignments(instructor_id)
         submitted_assignments = instructor_model.get_submitted_assignments(instructor_id)
-        return render_template('instructor_dashboard.html', grouped_data=groupd_data_list,course_material=course_material, assignment_material=assignments, submitted_assignments=submitted_assignments, username = session.get('username').capitalize())
+        register_courses = list(instructor_model.register_course_section())
+        return render_template('instructor_dashboard.html', course_data= register_courses, grouped_data=groupd_data_list,course_material=course_material, assignment_material=assignments, submitted_assignments=submitted_assignments, username = session.get('username').capitalize())
+
+
+@app.route('/register_course', methods=['POST'])
+def register_course():
+    data = request.get_json()
+    instructor_id = session.get('user')
+    data['section_uid'] = data['_id']
+    data.pop('_id')
+    instructor_model.course_register_instructor(instructor_id, data)
+    flash("Course registered successfully!", "success")
+    return redirect(url_for('instructor_dashboard'))
 
 
 @app.route('/upload_course_material', methods=['GET', 'POST'])
