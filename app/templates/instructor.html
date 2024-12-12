@@ -1,0 +1,128 @@
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="text-center card-header">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div id="flash-message" class="mt-3">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+    </div>
+
+    <h2 class="d-flex justify-content-between align-items-center">Instructor Dashboard<a href="{{ url_for('main.logout') }}" class="btn btn-sm btn-danger">Logout</a></h2>
+    <br>
+
+
+    <!-- Instructor registers to a course based on the semester_year then based on semster_year
+      need to show courses available for that semester_year  then it will show sections available for that course -->
+    <div class="container mt-5">
+        <h5>Register to a Course</h5>
+        <form id="registrationForm" method="post" action="{{ url_for('main.register_course') }}">
+            <label for="semester_year">Select Semester:</label>
+            <select id="semester_year" name="semester_year" onchange="loadCourses()">
+                <option value="" selected disabled>Select Semester Year</option>
+                <option value="Fall 2024">Fall 2024</option>
+                <option value="Spring 2025">Spring 2025</option>
+                <option value="Summer 2025">Summer 2025</option>
+                <option value="Fall 2025">Fall 2025</option>
+            </select>
+        
+            <label for="course_id">Select Course:</label>
+            <select id="course_id" name="course_id" onchange="loadSections()">
+                <!-- Courses will be populated here based on semester -->
+            </select>
+        
+            <label for="section_id">Select Section:</label>
+            <select id="section_id" name="section_id">
+                <!-- Sections will be populated here based on course selection -->
+            </select>
+        
+            <button type="submit">Register</button>
+        </form>
+    </div>
+    <div class="container mt-5">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Section ID</th>
+                <th>Course ID</th>
+                <th>Semester Year</th>
+                <th>Add Courses/Assignments</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for data in sections %}
+            <tr>
+                <td>{{ data.section }}</td>
+                <td>{{ data.course_id }}</td>
+                <td>
+                    {{ data.semester_year }}
+                </td>
+                <td>
+                    <a href="{{ url_for('main.create_assignment', section_id=data.section) }}" class="btn btn-sm btn-primary">Add Courses/Assignments</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table></div>
+    <script>
+        function loadCourses() {
+            const semesterYear = document.getElementById("semester_year").value;
+        
+            // Make an AJAX call to fetch available courses for the selected semester_year
+            fetch(`/get_courses?semester_year=${semesterYear}`)
+                .then(response => response.json())
+                .then(data => {
+                    const courseSelect = document.getElementById("course_id");
+                    courseSelect.innerHTML = ""; // Clear previous options
+                    data.courses.forEach(course => {
+                        const option = document.createElement("option");
+                        option.value = course.course_id;
+                        option.text = `${course.course_title} - ${course.course_id}`;
+                        courseSelect.appendChild(option);
+                    });
+                });
+        }
+        
+        function loadSections() {
+            const courseId = document.getElementById("course_id").value;
+            const semesterYear = document.getElementById("semester_year").value;
+        
+            // Make an AJAX call to fetch available sections for the selected course and semester
+            fetch(`/get_sections?course_id=${courseId}&semester_year=${semesterYear}`)
+                .then(response => response.json())
+                .then(data => {
+                    const sectionSelect = document.getElementById("section_id");
+                    sectionSelect.innerHTML = ""; // Clear previous options
+                    data.sections.forEach(section => {
+                        const option = document.createElement("option");
+                        option.value = section.section_id;
+                        option.text = `${section.section_id}`;
+                        sectionSelect.appendChild(option);
+                    });
+                });
+        }
+        </script>
+    <script>
+        // Flash message display
+        setTimeout(() => {
+            const flashMessage = document.getElementById('flash-message');
+            if (flashMessage) {
+                flashMessage.style.display = 'none';
+            }
+        }, 5000); // 5000ms = 5 seconds
+        </script>
+
+</body>
+</html>

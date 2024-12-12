@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Assignment</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h4>Completed Assignments</h4>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Student Name</th>
+                    <th>Assignment Title</th>
+                    <th>Description</th>
+                    <th>Attachments</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for material in completed_assignments %}
+                <tr>
+                    <td>{{ material.student_name }}</td>
+                    <td>{{ material.assignment_title }}</td>
+                    <td>{{ material.description }}</td>
+                    <td>
+                        {% for attachment in material.attachments %}
+                        <a href="{{ url_for('main.uploaded_file', filename=attachment) }}" target="_blank">{{ attachment }}</a>{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <form action="/grade_assignment" method="POST">
+                            <input type="hidden" name="student_id" value="{{ material.student_uid }}">
+                            <input type="hidden" name="section_id" value="{{ material.section_id }}">
+                            <input type="text" name="grade" class="form-control">
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+    </div>
+
+<div class="container mt-5">
+    <h1 class="mb-4">Create Assignment</h1>
+    <form action="{{ url_for('main.create_assignment') }}" method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="assignment_title" class="form-label">Assignment Title</label>
+            <input type="text" class="form-control" id="assignment_title" name="assignment_title" required>
+        </div>
+        <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="due_date" class="form-label">Due Date</label>
+            <input type="date" class="form-control" id="due_date" name="due_date" required>
+        </div>
+        <!-- max number of attempts-->
+        <div class="mb-3">
+            <label for="max_attempts" class="form-label">Max Number of Attempts</label>
+            <input type="number" class="form-control" id="max_attempts" name="max_attempts" required>
+        </div>
+        <input type="hidden" name="section_id" value="{{ section_id }}">
+        <div class="mb-3">
+            <label for="attachments" class="form-label">Attachments</label>
+            <input type="file" class="form-control" id="attachments" name="attachments" multiple>
+        </div>
+        <button type="submit" class="btn btn-primary">Create Assignment</button>
+    </form>
+</div>
+
+<div class="container mt-5">
+    <h1 class="mb-4">Upload Course Material</h1>
+    <form action="{{ url_for('main.upload_course_material') }}" method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="course_title" class="form-label">Course Title</label>
+            <input type="text" name="course_title" id="course_title" class="form-control">
+        </div>
+        <input type="hidden" name="section_id" value="{{ section_id }}">
+
+        <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea name="description" id="description" class="form-control" rows="3" required></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="attachments" class="form-label">Attachments</label>
+            <input type="file" name="attachments" id="attachments" class="form-control" multiple>
+        </div>
+        <button type="submit" class="btn btn-primary">Upload</button>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
